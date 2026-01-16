@@ -4,7 +4,7 @@ services:
     env: node
     plan: free
     buildCommand: pnpm install --frozen-lockfile --prod=false && pnpm --filter api exec prisma generate && pnpm --filter api exec prisma migrate deploy && pnpm --filter api build
-    startCommand: pnpm --filter api build && pnpm --filter api start
+    startCommand: pnpm --filter api exec prisma generate && pnpm --filter api build && pnpm --filter api start
     envVars:
       - key: NODE_ENV
         value: production
