@@ -311,6 +311,10 @@ app.get(
   })
 );
 
+app.get("/api/health", (_req, res) => {
+  return res.json({ ok: true });
+});
+
 app.post(
   "/api/plan/select",
   authMiddleware,
