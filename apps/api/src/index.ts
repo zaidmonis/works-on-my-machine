@@ -19,7 +19,10 @@ const allowedOrigins = (process.env.WEB_ORIGIN ?? "http://localhost:5173")
 
 app.use(
   cors({
-    origin: (origin, callback) => {
+    origin: (
+      origin: string | undefined,
+      callback: (err: Error | null, allow?: boolean) => void
+    ) => {
       if (!origin) {
         return callback(null, true);
       }
@@ -356,9 +359,12 @@ app.get(
       orderBy: { order: "asc" }
     });
 
-    const phaseProgress = phases.map((phase) => {
+    const phaseProgress = phases.map((phase: any) => {
       const total = phase.lessons.length;
-      const completed = completedLessons.filter((lesson) => lesson.lessonId && phase.lessons.some((l) => l.id === lesson.lessonId)).length;
+      const completed = completedLessons.filter(
+        (lesson: any) =>
+          lesson.lessonId && phase.lessons.some((l: any) => l.id === lesson.lessonId)
+      ).length;
       return {
         phaseId: phase.id,
         title: phase.title,
@@ -423,7 +429,7 @@ app.post(
     const lessonId = req.params.lessonId;
     const questions = await prisma.quizQuestion.findMany({ where: { lessonId } });
     const total = questions.length;
-    const score = questions.reduce((acc, question, index) => {
+    const score = questions.reduce((acc: number, question: any, index: number) => {
       return acc + (parsed.data.answers[index] === question.correctIndex ? 1 : 0);
     }, 0);
 
