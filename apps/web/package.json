@@ -1,0 +1,36 @@
+{
+  "name": "web",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": "echo 'no lint configured'",
+    "format": "echo 'no format configured'"
+  },
+  "dependencies": {
+    "@monaco-editor/react": "^4.6.0",
+    "@works/shared": "workspace:*",
+    "axios": "^1.7.2",
+    "clsx": "^2.1.1",
+    "markdown-it": "^14.1.0",
+    "markdown-it-container": "^4.0.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.26.2",
+    "shiki": "^1.14.0",
+    "@tailwindcss/typography": "^0.5.13",
+    "tailwindcss": "^3.4.10",
+    "typescript": "^5.5.4"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.4",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.1",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.41",
+    "vite": "^5.4.1"
+  }
+}

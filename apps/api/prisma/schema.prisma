@@ -1,0 +1,157 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id           String   @id @default(cuid())
+  username     String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+  plans        UserPlan[]
+  lessonProgress UserLessonProgress[]
+  quizAttempts UserQuizAttempt[]
+  exerciseAttempts UserExerciseAttempt[]
+  projectProgress UserProjectProgress[]
+}
+
+model Plan {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+  weeks     Week[]
+  userPlans UserPlan[]
+}
+
+model UserPlan {
+  id               String   @id @default(cuid())
+  userId           String
+  planId           String
+  startedAt        DateTime @default(now())
+  currentWeekIndex Int      @default(1)
+  user             User     @relation(fields: [userId], references: [id])
+  plan             Plan     @relation(fields: [planId], references: [id])
+}
+
+model Phase {
+  id          String   @id @default(cuid())
+  title       String
+  order       Int
+  description String
+  milestoneChecklist Json
+  weeks       Week[]
+  lessons     Lesson[]
+  projects    Project[]
+  resources   Resource[]
+}
+
+model Week {
+  id      String @id @default(cuid())
+  planId  String
+  index   Int
+  title   String
+  phaseId String
+  plan    Plan  @relation(fields: [planId], references: [id])
+  phase   Phase @relation(fields: [phaseId], references: [id])
+}
+
+model Lesson {
+  id              String   @id @default(cuid())
+  phaseId         String
+  title           String
+  slug            String
+  order           Int
+  contentMarkdown String
+  estimatedMinutes Int
+  phase           Phase    @relation(fields: [phaseId], references: [id])
+  quizQuestions   QuizQuestion[]
+  exercises       Exercise[]
+}
+
+model QuizQuestion {
+  id          String @id @default(cuid())
+  lessonId    String
+  question    String
+  options     Json
+  correctIndex Int
+  explanation String
+  lesson      Lesson @relation(fields: [lessonId], references: [id])
+}
+
+model Exercise {
+  id                    String @id @default(cuid())
+  lessonId              String
+  promptMarkdown        String
+  starterCode           String
+  solutionHintMarkdown  String
+  lesson                Lesson @relation(fields: [lessonId], references: [id])
+  attempts              UserExerciseAttempt[]
+}
+
+model UserLessonProgress {
+  id          String   @id @default(cuid())
+  userId      String
+  lessonId    String
+  completed   Boolean  @default(false)
+  completedAt DateTime?
+  user        User     @relation(fields: [userId], references: [id])
+  lesson      Lesson   @relation(fields: [lessonId], references: [id])
+  @@unique([userId, lessonId])
+}
+
+model UserQuizAttempt {
+  id        String   @id @default(cuid())
+  userId    String
+  lessonId  String
+  score     Int
+  total     Int
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id])
+  lesson    Lesson   @relation(fields: [lessonId], references: [id])
+}
+
+model UserExerciseAttempt {
+  id         String   @id @default(cuid())
+  userId     String
+  exerciseId String
+  code       String
+  status     String
+  updatedAt  DateTime @updatedAt
+  user       User     @relation(fields: [userId], references: [id])
+  exercise   Exercise @relation(fields: [exerciseId], references: [id])
+  @@unique([userId, exerciseId])
+}
+
+model Project {
+  id                 String @id @default(cuid())
+  phaseId            String
+  title              String
+  descriptionMarkdown String
+  checklist          Json
+  phase              Phase @relation(fields: [phaseId], references: [id])
+  progress           UserProjectProgress[]
+}
+
+model UserProjectProgress {
+  id        String   @id @default(cuid())
+  userId    String
+  projectId String
+  status    String
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id])
+  project   Project  @relation(fields: [projectId], references: [id])
+  @@unique([userId, projectId])
+}
+
+model Resource {
+  id      String @id @default(cuid())
+  phaseId String
+  title   String
+  url     String
+  type    String
+  phase   Phase  @relation(fields: [phaseId], references: [id])
+}
