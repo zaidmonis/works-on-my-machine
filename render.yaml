@@ -11,6 +11,6 @@ services:
       - key: JWT_SECRET
         sync: false
       - key: WEB_ORIGIN
-        value: https://YOUR_GITHUB_USER.github.io/YOUR_REPO
+        value: https://zaidmonis.github.io/works-on-my-machine/
       - key: DATABASE_URL
         value: file:./dev.db
