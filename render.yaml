@@ -3,8 +3,8 @@ services:
     name: works-on-my-machine-api
     env: node
     plan: free
-    buildCommand: pnpm install --frozen-lockfile --prod=false && pnpm --filter api exec prisma generate && pnpm --filter api exec prisma migrate deploy && pnpm --filter api build
-    startCommand: pnpm --filter api exec prisma generate && pnpm --filter api build && pnpm --filter api start
+    buildCommand: pnpm install --frozen-lockfile --prod=false && pnpm --filter api exec prisma generate --schema apps/api/prisma/schema.prisma && pnpm --filter api build
+    startCommand: pnpm --filter api exec prisma generate --schema apps/api/prisma/schema.prisma && pnpm --filter api exec prisma migrate deploy --schema apps/api/prisma/schema.prisma && pnpm --filter api exec prisma db seed --schema apps/api/prisma/schema.prisma && pnpm --filter api build && pnpm --filter api start
     envVars:
       - key: NODE_ENV
         value: production
@@ -13,8 +13,4 @@ services:
       - key: WEB_ORIGIN
         value: https://YOUR_GITHUB_USER.github.io/YOUR_REPO
       - key: DATABASE_URL
-        value: file:/var/data/dev.db
-    disk:
-      name: api-data
-      mountPath: /var/data
-      sizeGB: 1
+        value: file:./dev.db
