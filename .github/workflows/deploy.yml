@@ -49,6 +49,8 @@ jobs:
   render-deploy:
     runs-on: ubuntu-latest
     needs: deploy
-    if: ${{ secrets.RENDER_DEPLOY_HOOK != '' }}
+    env:
+      RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
     steps:
-      - run: curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK }}"
+      - if: ${{ env.RENDER_DEPLOY_HOOK != '' }}
+        run: curl -X POST "${{ env.RENDER_DEPLOY_HOOK }}"
