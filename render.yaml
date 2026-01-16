@@ -3,8 +3,8 @@ services:
     name: works-on-my-machine-api
     env: node
     plan: free
-    buildCommand: pnpm install --prod=false && pnpm --filter api exec prisma generate --schema apps/api/prisma/schema.prisma && pnpm --filter api build
-    startCommand: pnpm --filter api exec prisma generate --schema apps/api/prisma/schema.prisma && pnpm --filter api exec prisma migrate deploy --schema apps/api/prisma/schema.prisma && pnpm --filter api exec prisma db seed --schema apps/api/prisma/schema.prisma && pnpm --filter api build && pnpm --filter api start
+    buildCommand: pnpm install --prod=false && pnpm --filter api exec prisma generate --schema prisma/schema.prisma && pnpm --filter api build
+    startCommand: pnpm --filter api exec prisma generate --schema prisma/schema.prisma && pnpm --filter api exec prisma migrate deploy --schema prisma/schema.prisma && pnpm --filter api exec prisma db seed --schema prisma/schema.prisma && pnpm --filter api build && pnpm --filter api start
     envVars:
       - key: NODE_ENV
         value: production
