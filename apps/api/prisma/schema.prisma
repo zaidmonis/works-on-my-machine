@@ -42,7 +42,7 @@ model Phase {
   title       String
   order       Int
   description String
-  milestoneChecklist Json
+  milestoneChecklist String
   weeks       Week[]
   lessons     Lesson[]
   projects    Project[]
@@ -70,13 +70,15 @@ model Lesson {
   phase           Phase    @relation(fields: [phaseId], references: [id])
   quizQuestions   QuizQuestion[]
   exercises       Exercise[]
+  lessonProgress  UserLessonProgress[]
+  quizAttempts    UserQuizAttempt[]
 }
 
 model QuizQuestion {
   id          String @id @default(cuid())
   lessonId    String
   question    String
-  options     Json
+  options     String
   correctIndex Int
   explanation String
   lesson      Lesson @relation(fields: [lessonId], references: [id])
@@ -131,7 +133,7 @@ model Project {
   phaseId            String
   title              String
   descriptionMarkdown String
-  checklist          Json
+  checklist          String
   phase              Phase @relation(fields: [phaseId], references: [id])
   progress           UserProjectProgress[]
 }

@@ -2,13 +2,16 @@ import React from "react";
 import { Link } from "react-router-dom";
 import api from "../lib/api";
 import ProgressBar from "../components/ProgressBar";
+import { useAuth } from "../lib/auth";
 
 const Dashboard: React.FC = () => {
   const [summary, setSummary] = React.useState<any | null>(null);
+  const { isGuest } = useAuth();
 
   React.useEffect(() => {
+    if (isGuest) return;
     api.get("/progress/summary").then((response) => setSummary(response.data));
-  }, []);
+  }, [isGuest]);
 
   const totalLessons = summary?.phaseProgress?.reduce((acc: number, phase: any) => acc + phase.total, 0) ?? 0;
   const completedLessons = summary?.completedLessons ?? 0;
@@ -21,15 +24,30 @@ const Dashboard: React.FC = () => {
           <h1 className="text-3xl font-semibold">Dashboard</h1>
           <p className="text-slate-400 mt-2">Pick up where you left off and keep moving forward.</p>
         </div>
-        <Link
-          to="/plan/select"
-          className="bg-slate-800 px-4 py-2 rounded text-sm text-slate-200 hover:bg-slate-700"
-        >
-          Change plan
-        </Link>
+        {!isGuest && (
+          <Link
+            to="/plan/select"
+            className="bg-slate-800 px-4 py-2 rounded text-sm text-slate-200 hover:bg-slate-700"
+          >
+            Change plan
+          </Link>
+        )}
       </div>
 
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
+      {isGuest ? (
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
+          <h2 className="text-lg font-semibold">Guest session</h2>
+          <p className="text-sm text-slate-400 mt-1">
+            You are browsing as a guest, so progress is not saved across sessions.
+          </p>
+          <div className="mt-4">
+            <Link to="/roadmap" className="text-cyan-300 text-sm">
+              Explore the roadmap 
+            </Link>
+          </div>
+        </div>
+      ) : (
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
         <h2 className="text-lg font-semibold">Overall progress</h2>
         <p className="text-sm text-slate-400 mt-1">
           {completedLessons} lessons completed out of {totalLessons}
@@ -49,7 +67,10 @@ const Dashboard: React.FC = () => {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
+      )}
+
+      {!isGuest && (
+        <div className="grid gap-4 md:grid-cols-2">
         {summary?.phaseProgress?.map((phase: any) => {
           const percentage = phase.total ? Math.round((phase.completed / phase.total) * 100) : 0;
           return (
@@ -64,15 +85,18 @@ const Dashboard: React.FC = () => {
             </div>
           );
         })}
-      </div>
+        </div>
+      )}
 
-      <div className="bg-gradient-to-r from-cyan-500/20 to-indigo-500/20 border border-slate-800 rounded-2xl p-6">
+      {!isGuest && (
+        <div className="bg-gradient-to-r from-cyan-500/20 to-indigo-500/20 border border-slate-800 rounded-2xl p-6">
         <h2 className="text-lg font-semibold">Quick resume</h2>
         <p className="text-sm text-slate-300 mt-1">Head straight to your current week and lessons.</p>
         <Link to="/roadmap" className="mt-4 inline-block text-sm text-cyan-300">
           Continue learning →
         </Link>
-      </div>
+        </div>
+      )}
     </div>
   );
 };

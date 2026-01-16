@@ -1,9 +1,34 @@
 import React from "react";
+import { Link } from "react-router-dom";
 import api from "../lib/api";
+import { useAuth } from "../lib/auth";
 
 const Profile: React.FC = () => {
   const [exportData, setExportData] = React.useState<string>("");
   const [status, setStatus] = React.useState<string | null>(null);
+  const { isGuest } = useAuth();
+
+  if (isGuest) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-semibold">Profile</h1>
+          <p className="text-slate-400 mt-2">
+            Guest sessions do not save progress or allow exports.
+          </p>
+        </div>
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
+          <h2 className="text-lg font-semibold">Create an account</h2>
+          <p className="text-sm text-slate-400 mt-2">
+            Sign up to persist your progress and unlock exports.
+          </p>
+          <Link to="/signup" className="mt-4 inline-block text-sm text-cyan-300">
+            Create an account
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   const handleExport = async () => {
     const response = await api.get("/progress/export");

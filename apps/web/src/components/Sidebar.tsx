@@ -5,6 +5,7 @@ import api from "../lib/api";
 const Sidebar: React.FC = () => {
   const [roadmap, setRoadmap] = React.useState<any[]>([]);
   const [search, setSearch] = React.useState("");
+  const [expandedPhases, setExpandedPhases] = React.useState<Record<string, boolean>>({});
 
   React.useEffect(() => {
     api.get("/roadmap").then((response) => setRoadmap(response.data.phases));
@@ -12,10 +13,14 @@ const Sidebar: React.FC = () => {
 
   const filteredRoadmap = roadmap.map((phase) => {
     const lessons = phase.lessons.filter((lesson: any) =>
-      `${lesson.title} ${lesson.contentMarkdown ?? \"\"}`.toLowerCase().includes(search.toLowerCase())
+      `${lesson.title} ${lesson.contentMarkdown ?? ""}`.toLowerCase().includes(search.toLowerCase())
     );
     return { ...phase, lessons };
   });
+
+  const togglePhase = (phaseId: string) => {
+    setExpandedPhases((prev) => ({ ...prev, [phaseId]: !prev[phaseId] }));
+  };
 
   return (
     <aside className="w-72 border-r border-slate-800 bg-slate-900 hidden lg:flex flex-col">
@@ -30,13 +35,16 @@ const Sidebar: React.FC = () => {
         />
       </div>
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
-        {filteredRoadmap.map((phase) => (
+        {filteredRoadmap.map((phase) => {
+          const expanded = Boolean(expandedPhases[phase.id]);
+          const visibleLessons = expanded ? phase.lessons : phase.lessons.slice(0, 6);
+          return (
           <div key={phase.id}>
             <Link to={`/phase/${phase.id}`} className="text-sm font-semibold text-cyan-300">
               {phase.title}
             </Link>
             <ul className="mt-2 space-y-1 text-xs text-slate-300">
-              {phase.lessons.slice(0, 6).map((lesson: any) => (
+              {visibleLessons.map((lesson: any) => (
                 <li key={lesson.id}>
                   <Link to={`/lesson/${lesson.id}`} className="hover:text-cyan-200">
                     {lesson.title}
@@ -44,11 +52,19 @@ const Sidebar: React.FC = () => {
                 </li>
               ))}
               {phase.lessons.length > 6 && (
-                <li className="text-slate-500">+ {phase.lessons.length - 6} more</li>
+                <li>
+                  <button
+                    type="button"
+                    onClick={() => togglePhase(phase.id)}
+                    className="text-slate-500 hover:text-cyan-200"
+                  >
+                    {expanded ? "Show less" : `+ ${phase.lessons.length - 6} more`}
+                  </button>
+                </li>
               )}
             </ul>
           </div>
-        ))}
+        );})}
       </div>
       <div className="p-4 border-t border-slate-800 text-xs text-slate-400">
         <p>Stay consistent. Track your progress each week.</p>

@@ -5,7 +5,7 @@ export type PlanName = z.infer<typeof PlanName>;
 
 export const AuthSchema = z.object({
   username: z.string().min(3),
-  password: z.string().min(6)
+  password: z.string().min(4)
 });
 
 export const PlanSelectSchema = z.object({

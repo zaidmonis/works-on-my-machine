@@ -3,23 +3,60 @@ import { Link, useParams } from "react-router-dom";
 import api from "../lib/api";
 import MarkdownRenderer from "../components/MarkdownRenderer";
 import { usePlayground } from "../lib/playground";
+import { useAuth } from "../lib/auth";
 
 const LessonDetail: React.FC = () => {
   const { lessonId } = useParams();
   const [lesson, setLesson] = React.useState<any | null>(null);
   const [phaseLessons, setPhaseLessons] = React.useState<any[]>([]);
-  const [quizAnswers, setQuizAnswers] = React.useState<number[]>([]);
+  const [quizAnswers, setQuizAnswers] = React.useState<Array<number | null>>([]);
   const [quizResult, setQuizResult] = React.useState<any | null>(null);
   const [completed, setCompleted] = React.useState(false);
   const { code, setCode, setLanguage } = usePlayground();
+  const { isGuest } = useAuth();
+
+  const loadGuestProgress = () => {
+    try {
+      const stored = sessionStorage.getItem("guestLessonProgress");
+      return stored ? (JSON.parse(stored) as Record<string, boolean>) : {};
+    } catch {
+      return {};
+    }
+  };
+
+  const saveGuestProgress = (progress: Record<string, boolean>) => {
+    sessionStorage.setItem("guestLessonProgress", JSON.stringify(progress));
+  };
+
+  const getGuestCompleted = (id: string) => {
+    const progress = loadGuestProgress();
+    return Boolean(progress[id]);
+  };
+
+  const setGuestCompleted = (id: string, value: boolean) => {
+    const progress = loadGuestProgress();
+    if (value) {
+      progress[id] = true;
+    } else {
+      delete progress[id];
+    }
+    saveGuestProgress(progress);
+  };
 
   React.useEffect(() => {
     if (!lessonId) return;
+    setCompleted(false);
+    setQuizResult(null);
     api.get(`/lessons/${lessonId}`).then((response) => {
       setLesson(response.data.lesson);
-      setQuizAnswers(new Array(response.data.lesson.quizQuestions.length).fill(0));
+      if (isGuest) {
+        setCompleted(getGuestCompleted(lessonId));
+      } else {
+        setCompleted(Boolean(response.data.completed));
+      }
+      setQuizAnswers(new Array(response.data.lesson.quizQuestions.length).fill(null));
     });
-  }, [lessonId]);
+  }, [lessonId, isGuest]);
 
   React.useEffect(() => {
     if (!lesson?.phaseId) return;
@@ -32,14 +69,37 @@ const LessonDetail: React.FC = () => {
 
   const handleComplete = async () => {
     if (!lessonId) return;
+    if (isGuest) {
+      setGuestCompleted(lessonId, true);
+      setCompleted(true);
+      return;
+    }
     await api.post(`/lessons/${lessonId}/complete`);
     setCompleted(true);
   };
 
   const handleQuizSubmit = async () => {
     if (!lessonId) return;
-    const response = await api.post(`/quizzes/${lessonId}/attempt`, { answers: quizAnswers });
+    const answers = quizAnswers.map((answer) => (answer === null ? -1 : answer));
+    if (isGuest) {
+      const questions = lesson?.quizQuestions ?? [];
+      const total = questions.length;
+      const score = questions.reduce((acc: number, question: any, index: number) => {
+        return acc + (answers[index] === question.correctIndex ? 1 : 0);
+      }, 0);
+      const completedQuiz = total > 0 && score === total;
+      setQuizResult({ score, total, completed: completedQuiz });
+      if (completedQuiz && lessonId) {
+        setGuestCompleted(lessonId, true);
+        setCompleted(true);
+      }
+      return;
+    }
+    const response = await api.post(`/quizzes/${lessonId}/attempt`, { answers });
     setQuizResult(response.data);
+    if (response.data.completed) {
+      setCompleted(true);
+    }
   };
 
   return (

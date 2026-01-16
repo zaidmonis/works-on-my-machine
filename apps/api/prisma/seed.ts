@@ -1,52 +1,58 @@
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcrypt";
+import { javascriptMasteryLessons } from "./content/javascript-mastery";
+import { reactFundamentalsLessons } from "./content/react-fundamentals";
+import { advancedReactPatternsLessons } from "./content/advanced-react-patterns";
+import { productionReadyReactLessons } from "./content/production-ready-react";
 
 const prisma = new PrismaClient();
+
+const toJson = (value: unknown) => JSON.stringify(value);
 
 const phases = [
   {
     title: "JavaScript Mastery",
     order: 1,
     description: "Build strong JavaScript foundations, from variables to the event loop.",
-    milestoneChecklist: [
+    milestoneChecklist: toJson([
       "Explain core JavaScript data types",
       "Write functions with parameters and return values",
       "Manipulate arrays and objects with common methods",
       "Use async/await with error handling"
-    ]
+    ])
   },
   {
     title: "React Fundamentals",
     order: 2,
     description: "Learn the core React mental model and build practical components.",
-    milestoneChecklist: [
+    milestoneChecklist: toJson([
       "Build reusable React components",
       "Manage state and side effects with hooks",
       "Handle forms and validation",
       "Fetch data with loading and error states"
-    ]
+    ])
   },
   {
     title: "Advanced React Patterns",
     order: 3,
     description: "Level up with hooks, routing, performance, and testing basics.",
-    milestoneChecklist: [
+    milestoneChecklist: toJson([
       "Create custom hooks for shared logic",
       "Add routing and protected routes",
       "Optimize rendering performance",
       "Write basic component tests"
-    ]
+    ])
   },
   {
     title: "Production-Ready React",
     order: 4,
     description: "Ship real apps with TypeScript, structure, and deployment skills.",
-    milestoneChecklist: [
+    milestoneChecklist: toJson([
       "Type components with TypeScript",
       "Organize a feature-based project structure",
       "Configure production builds",
       "Apply accessibility best practices"
-    ]
+    ])
   }
 ];
 
@@ -618,125 +624,282 @@ const slugify = (value: string) =>
 
 const lessonTemplate = (topic: string, section: string) => `# ${topic}\n\n## What you\'ll learn\n- The core idea behind ${topic}\n- Where ${topic} fits inside ${section}\n- How to explain ${topic} in plain language\n\n## Concept explanation\n${topic} is a building block of modern JavaScript and React apps. Think of it as a tool you can combine with other tools to solve real problems. We\'ll start with the smallest example, then scale it up to something you\'d use in a real project.\n\n## Examples\n\n\`\`\`js\n${exampleCode(topic)}\n\`\`\`\n\n\`\`\`js\nconst sample = () => ({ topic: "${topic}", ready: true });\nconsole.log(sample());\n\`\`\`\n\n\`\`\`ts\ntype Lesson = { topic: string; ready: boolean };\nconst lesson: Lesson = { topic: "${topic}", ready: true };\nconsole.log(lesson);\n\`\`\`\n\n## Common mistakes + debugging tips\n- Skipping small tests. Always log intermediate values.\n- Mixing ${topic} with unrelated concepts before you\'re ready.\n- Forgetting to read error messages carefully.\n\n## Real-world uses\n- Building UI interactions\n- Data transformations\n- API integrations\n\n## Quick checks\n1. Can you explain ${topic} to a friend?\n2. Where would you use ${topic} in a small app?\n3. What happens if you remove it entirely?\n\n## Try it\n\`\`\`playground\n${exampleCode(topic)}\n\`\`\`\n`;
 
-async function main() {
-  await prisma.userProjectProgress.deleteMany();
-  await prisma.userExerciseAttempt.deleteMany();
-  await prisma.userQuizAttempt.deleteMany();
-  await prisma.userLessonProgress.deleteMany();
-  await prisma.userPlan.deleteMany();
-  await prisma.project.deleteMany();
-  await prisma.resource.deleteMany();
-  await prisma.exercise.deleteMany();
-  await prisma.quizQuestion.deleteMany();
-  await prisma.lesson.deleteMany();
-  await prisma.week.deleteMany();
-  await prisma.plan.deleteMany();
-  await prisma.phase.deleteMany();
-  await prisma.user.deleteMany();
+const defaultQuizQuestions = (topic: string) => [
+  {
+    question: `Which statement best describes ${topic}?`,
+    options: [
+      "A syntax rule",
+      "A core concept you use to build logic",
+      "A browser-only API",
+      "A styling technique"
+    ],
+    correctIndex: 1,
+    explanation: `${topic} is a concept you use to build logic and behavior.`
+  },
+  {
+    question: `Where would ${topic} be most useful?`,
+    options: ["Debugging only", "UI behavior", "Database indexing", "Image editing"],
+    correctIndex: 1,
+    explanation: `${topic} helps you structure UI behavior and logic.`
+  },
+  {
+    question: `What is the first step when learning ${topic}?`,
+    options: ["Memorize everything", "Practice with a tiny example", "Skip basics", "Avoid errors"],
+    correctIndex: 1,
+    explanation: "Start small and iterate with quick feedback."
+  }
+];
 
-  const passwordHash = await bcrypt.hash("password123", 10);
-  await prisma.user.create({
-    data: {
-      username: "demo",
-      passwordHash
-    }
+const defaultExercises = (topic: string) => [
+  {
+    promptMarkdown: `Explain ${topic} in your own words in 2-3 sentences.`,
+    starterCode: exampleCode(topic),
+    solutionHintMarkdown: "Keep it simple and focus on the big idea."
+  },
+  {
+    promptMarkdown: `Modify the starter code to log a custom message about ${topic}.`,
+    starterCode: exampleCode(topic),
+    solutionHintMarkdown: "Change the string and log it again."
+  },
+  {
+    promptMarkdown: `Create a tiny example that uses ${topic} inside a function.`,
+    starterCode: `function demo() {\n  // TODO: add ${topic} here\n}\n\ndemo();`,
+    solutionHintMarkdown: "Return a value or log something from inside the function."
+  }
+];
+
+async function main() {
+  const existingDemoUser = await prisma.user.findUnique({
+    where: { username: "demo" }
   });
 
-  const phaseRecords = await Promise.all(
-    phases.map((phase) => prisma.phase.create({ data: phase }))
-  );
+  if (!existingDemoUser) {
+    const passwordHash = await bcrypt.hash("password123", 10);
+    await prisma.user.create({
+      data: {
+        username: "demo",
+        passwordHash
+      }
+    });
+  }
+
+  const phaseRecords = [];
+  for (const phase of phases) {
+    const existingPhase = await prisma.phase.findFirst({
+      where: { title: phase.title }
+    });
+    if (existingPhase) {
+      const updated = await prisma.phase.update({
+        where: { id: existingPhase.id },
+        data: phase
+      });
+      phaseRecords.push(updated);
+    } else {
+      const created = await prisma.phase.create({ data: phase });
+      phaseRecords.push(created);
+    }
+  }
 
   for (const phase of phaseRecords) {
     const resourcesForPhase = resources[phase.title] ?? [];
     for (const resource of resourcesForPhase) {
-      await prisma.resource.create({
-        data: {
+      const existingResource = await prisma.resource.findFirst({
+        where: {
           phaseId: phase.id,
-          ...resource
+          title: resource.title
         }
       });
+      if (existingResource) {
+        await prisma.resource.update({
+          where: { id: existingResource.id },
+          data: {
+            phaseId: phase.id,
+            ...resource
+          }
+        });
+      } else {
+        await prisma.resource.create({
+          data: {
+            phaseId: phase.id,
+            ...resource
+          }
+        });
+      }
     }
 
     const projectsForPhase = projects[phase.title] ?? [];
     for (const project of projectsForPhase) {
-      await prisma.project.create({
-        data: {
+      const existingProject = await prisma.project.findFirst({
+        where: {
           phaseId: phase.id,
-          title: project.title,
-          descriptionMarkdown: project.description,
-          checklist: project.checklist
+          title: project.title
         }
       });
+      if (existingProject) {
+        await prisma.project.update({
+          where: { id: existingProject.id },
+          data: {
+            phaseId: phase.id,
+            title: project.title,
+            descriptionMarkdown: project.description,
+            checklist: toJson(project.checklist)
+          }
+        });
+      } else {
+        await prisma.project.create({
+          data: {
+            phaseId: phase.id,
+            title: project.title,
+            descriptionMarkdown: project.description,
+            checklist: toJson(project.checklist)
+          }
+        });
+      }
     }
 
     const sections = phaseTopics[phase.title] ?? [];
     let order = 1;
     for (const section of sections) {
       for (const topic of section.topics) {
-        const lesson = await prisma.lesson.create({
-          data: {
+        const lessonSlug = slugify(topic);
+        const lessonSet =
+          phase.title === "JavaScript Mastery"
+            ? javascriptMasteryLessons
+            : phase.title === "React Fundamentals"
+              ? reactFundamentalsLessons
+              : phase.title === "Advanced React Patterns"
+                ? advancedReactPatternsLessons
+                : phase.title === "Production-Ready React"
+                  ? productionReadyReactLessons
+                  : undefined;
+        const lessonContent = lessonSet ? lessonSet[lessonSlug] : undefined;
+        const contentMarkdown = lessonContent?.contentMarkdown ?? lessonTemplate(topic, section.section);
+        const estimatedMinutes = lessonContent?.estimatedMinutes ?? 30;
+        const quizQuestions = lessonContent?.quizQuestions ?? defaultQuizQuestions(topic);
+        const exercises = lessonContent?.exercises ?? defaultExercises(topic);
+
+        const existingLesson = await prisma.lesson.findFirst({
+          where: {
             phaseId: phase.id,
-            title: topic,
-            slug: slugify(topic),
-            order: order++,
-            contentMarkdown: lessonTemplate(topic, section.section),
-            estimatedMinutes: 30
+            slug: lessonSlug
           }
         });
 
-        await prisma.quizQuestion.createMany({
-          data: [
-            {
-              lessonId: lesson.id,
-              question: `Which statement best describes ${topic}?`,
-              options: [
-                "A syntax rule",
-                "A core concept you use to build logic",
-                "A browser-only API",
-                "A styling technique"
-              ],
-              correctIndex: 1,
-              explanation: `${topic} is a concept you use to build logic and behavior.`
-            },
-            {
-              lessonId: lesson.id,
-              question: `Where would ${topic} be most useful?`,
-              options: ["Debugging only", "UI behavior", "Database indexing", "Image editing"],
-              correctIndex: 1,
-              explanation: `${topic} helps you structure UI behavior and logic.`
-            },
-            {
-              lessonId: lesson.id,
-              question: `What is the first step when learning ${topic}?`,
-              options: ["Memorize everything", "Practice with a tiny example", "Skip basics", "Avoid errors"],
-              correctIndex: 1,
-              explanation: "Start small and iterate with quick feedback."
-            }
-          ]
-        });
+        const lesson = existingLesson
+          ? await prisma.lesson.update({
+              where: { id: existingLesson.id },
+              data: {
+                phaseId: phase.id,
+                title: lessonContent?.title ?? topic,
+                slug: lessonSlug,
+                order: order++,
+                contentMarkdown,
+                estimatedMinutes
+              }
+            })
+          : await prisma.lesson.create({
+              data: {
+                phaseId: phase.id,
+                title: lessonContent?.title ?? topic,
+                slug: lessonSlug,
+                order: order++,
+                contentMarkdown,
+                estimatedMinutes
+              }
+            });
 
-        await prisma.exercise.createMany({
-          data: [
-            {
-              lessonId: lesson.id,
-              promptMarkdown: `Explain ${topic} in your own words in 2-3 sentences.`,
-              starterCode: exampleCode(topic),
-              solutionHintMarkdown: "Keep it simple and focus on the big idea."
-            },
-            {
-              lessonId: lesson.id,
-              promptMarkdown: `Modify the starter code to log a custom message about ${topic}.`,
-              starterCode: exampleCode(topic),
-              solutionHintMarkdown: "Change the string and log it again."
-            },
-            {
-              lessonId: lesson.id,
-              promptMarkdown: `Create a tiny example that uses ${topic} inside a function.`,
-              starterCode: `function demo() {\n  // TODO: add ${topic} here\n}\n\ndemo();`,
-              solutionHintMarkdown: "Return a value or log something from inside the function."
+        if (quizQuestions.length > 0) {
+          const quizAttemptCount = await prisma.userQuizAttempt.count({
+            where: { lessonId: lesson.id }
+          });
+          if (quizAttemptCount === 0) {
+            await prisma.quizQuestion.deleteMany({ where: { lessonId: lesson.id } });
+            await prisma.quizQuestion.createMany({
+              data: quizQuestions.map((question) => ({
+                lessonId: lesson.id,
+                question: question.question,
+                options: toJson(question.options),
+                correctIndex: question.correctIndex,
+                explanation: question.explanation
+              }))
+            });
+          } else {
+            for (const question of quizQuestions) {
+              const existingQuestion = await prisma.quizQuestion.findFirst({
+                where: {
+                  lessonId: lesson.id,
+                  question: question.question
+                }
+              });
+              if (existingQuestion) {
+                await prisma.quizQuestion.update({
+                  where: { id: existingQuestion.id },
+                  data: {
+                    options: toJson(question.options),
+                    correctIndex: question.correctIndex,
+                    explanation: question.explanation
+                  }
+                });
+              } else {
+                await prisma.quizQuestion.create({
+                  data: {
+                    lessonId: lesson.id,
+                    question: question.question,
+                    options: toJson(question.options),
+                    correctIndex: question.correctIndex,
+                    explanation: question.explanation
+                  }
+                });
+              }
             }
-          ]
-        });
+          }
+        }
+
+        if (exercises.length > 0) {
+          const exerciseAttemptCount = await prisma.userExerciseAttempt.count({
+            where: {
+              exercise: { lessonId: lesson.id }
+            }
+          });
+          if (exerciseAttemptCount === 0) {
+            await prisma.exercise.deleteMany({ where: { lessonId: lesson.id } });
+            await prisma.exercise.createMany({
+              data: exercises.map((exercise) => ({
+                lessonId: lesson.id,
+                promptMarkdown: exercise.promptMarkdown,
+                starterCode: exercise.starterCode,
+                solutionHintMarkdown: exercise.solutionHintMarkdown
+              }))
+            });
+          } else {
+            for (const exercise of exercises) {
+              const existingExercise = await prisma.exercise.findFirst({
+                where: {
+                  lessonId: lesson.id,
+                  promptMarkdown: exercise.promptMarkdown
+                }
+              });
+              if (existingExercise) {
+                await prisma.exercise.update({
+                  where: { id: existingExercise.id },
+                  data: {
+                    starterCode: exercise.starterCode,
+                    solutionHintMarkdown: exercise.solutionHintMarkdown
+                  }
+                });
+              } else {
+                await prisma.exercise.create({
+                  data: {
+                    lessonId: lesson.id,
+                    promptMarkdown: exercise.promptMarkdown,
+                    starterCode: exercise.starterCode,
+                    solutionHintMarkdown: exercise.solutionHintMarkdown
+                  }
+                });
+              }
+            }
+          }
+        }
       }
     }
   }
@@ -747,7 +910,18 @@ async function main() {
     { name: "W12" }
   ];
 
-  const planRecords = await Promise.all(plans.map((plan) => prisma.plan.create({ data: plan })));
+  const planRecords = [];
+  for (const plan of plans) {
+    const existingPlan = await prisma.plan.findFirst({
+      where: { name: plan.name }
+    });
+    if (existingPlan) {
+      planRecords.push(existingPlan);
+    } else {
+      const created = await prisma.plan.create({ data: plan });
+      planRecords.push(created);
+    }
+  }
 
   const phaseByOrder = [...phaseRecords].sort((a, b) => a.order - b.order);
 
@@ -764,14 +938,30 @@ async function main() {
       const phase = phaseByOrder[i];
       const weeksForPhase = distribution[i];
       for (let w = 0; w < weeksForPhase; w++) {
-        await prisma.week.create({
-          data: {
+        const existingWeek = await prisma.week.findFirst({
+          where: {
             planId: plan.id,
-            index: weekIndex,
-            title: `Week ${weekIndex}: ${phase.title}`,
-            phaseId: phase.id
+            index: weekIndex
           }
         });
+        if (existingWeek) {
+          await prisma.week.update({
+            where: { id: existingWeek.id },
+            data: {
+              title: `Week ${weekIndex}: ${phase.title}`,
+              phaseId: phase.id
+            }
+          });
+        } else {
+          await prisma.week.create({
+            data: {
+              planId: plan.id,
+              index: weekIndex,
+              title: `Week ${weekIndex}: ${phase.title}`,
+              phaseId: phase.id
+            }
+          });
+        }
         weekIndex += 1;
       }
     }

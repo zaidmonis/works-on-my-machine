@@ -18,11 +18,11 @@ import Profile from "./pages/Profile";
 import AppLayout from "./components/AppLayout";
 
 const RequireAuth: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user, loading } = useAuth();
+  const { user, loading, isGuest } = useAuth();
   if (loading) {
     return <div className="p-8">Loading...</div>;
   }
-  if (!user) {
+  if (!user && !isGuest) {
     return <Navigate to="/login" replace />;
   }
   return <>{children}</>;

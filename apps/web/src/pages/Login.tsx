@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../lib/auth";
 
 const Login: React.FC = () => {
-  const { login } = useAuth();
+  const { login, continueAsGuest } = useAuth();
   const [username, setUsername] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [error, setError] = React.useState<string | null>(null);
@@ -47,6 +47,19 @@ const Login: React.FC = () => {
         >
           Login
         </button>
+        <button
+          type="button"
+          onClick={() => {
+            continueAsGuest();
+            navigate("/roadmap");
+          }}
+          className="w-full mt-3 border border-slate-700 text-slate-200 py-2 rounded font-semibold"
+        >
+          Continue as guest
+        </button>
+        <p className="mt-3 text-xs text-slate-400">
+          Guest progress is saved only for this session and may be lost after you close the tab.
+        </p>
         <p className="mt-4 text-xs text-slate-400">
           New here? <Link to="/signup" className="text-cyan-300">Create an account</Link>
         </p>

@@ -4,7 +4,7 @@ import Sidebar from "./Sidebar";
 import { useAuth } from "../lib/auth";
 
 const AppLayout: React.FC = () => {
-  const { logout, user } = useAuth();
+  const { logout, user, isGuest } = useAuth();
 
   return (
     <div className="min-h-screen flex bg-slate-950 text-slate-100">
@@ -32,16 +32,18 @@ const AppLayout: React.FC = () => {
             </NavLink>
           </nav>
           <div className="flex items-center gap-3">
-            <span className="text-sm text-slate-300">{user?.username}</span>
+            <span className="text-sm text-slate-300">{isGuest ? "Guest" : user?.username}</span>
             <button
               onClick={() => void logout()}
               className="px-3 py-1 rounded bg-slate-800 hover:bg-slate-700 text-sm"
             >
-              Logout
+              {isGuest ? "Exit guest" : "Logout"}
             </button>
-            <NavLink to="/profile" className="text-sm text-slate-300 hover:text-cyan-300">
-              Profile
-            </NavLink>
+            {!isGuest && (
+              <NavLink to="/profile" className="text-sm text-slate-300 hover:text-cyan-300">
+                Profile
+              </NavLink>
+            )}
           </div>
         </header>
         <main id="main" className="flex-1 px-6 py-6 overflow-y-auto">

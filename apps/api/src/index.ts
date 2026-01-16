@@ -4,13 +4,7 @@ import dotenv from "dotenv";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { PrismaClient } from "@prisma/client";
-import {
-  AuthSchema,
-  ExerciseAttemptSchema,
-  PlanSelectSchema,
-  ProjectStatusSchema,
-  QuizAttemptSchema
-} from "@works/shared";
+import { createRequire } from "module";
 
 dotenv.config();
 
@@ -29,6 +23,43 @@ const asyncHandler =
 
 const errorResponse = (code: string, message: string, details?: unknown) => ({
   error: { code, message, details }
+});
+
+const require = createRequire(import.meta.url);
+const {
+  AuthSchema,
+  ExerciseAttemptSchema,
+  PlanSelectSchema,
+  ProjectStatusSchema,
+  QuizAttemptSchema
+} = require("@works/shared");
+
+const parseJsonArray = <T,>(value: string | null | undefined): T[] => {
+  if (!value) {
+    return [];
+  }
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+};
+
+const normalizeProject = (project: any) => ({
+  ...project,
+  checklist: parseJsonArray<string>(project.checklist)
+});
+
+const normalizePhase = (phase: any) => ({
+  ...phase,
+  milestoneChecklist: parseJsonArray<string>(phase.milestoneChecklist),
+  projects: Array.isArray(phase.projects) ? phase.projects.map(normalizeProject) : phase.projects
+});
+
+const normalizeQuizQuestion = (question: any) => ({
+  ...question,
+  options: parseJsonArray<string>(question.options)
 });
 
 const authMiddleware: express.RequestHandler = async (req, res, next) => {
@@ -53,6 +84,30 @@ const authMiddleware: express.RequestHandler = async (req, res, next) => {
   } catch (error) {
     return res.status(401).json(errorResponse("UNAUTHORIZED", "Token invalid"));
   }
+};
+
+const optionalAuthMiddleware: express.RequestHandler = async (req, _res, next) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) {
+    return next();
+  }
+
+  const [, token] = authHeader.split(" ");
+  if (!token) {
+    return next();
+  }
+
+  try {
+    const payload = jwt.verify(token, JWT_SECRET) as { userId: string };
+    const user = await prisma.user.findUnique({ where: { id: payload.userId } });
+    if (user) {
+      (req as express.Request & { userId: string }).userId = user.id;
+    }
+  } catch {
+    // Ignore invalid tokens for optional auth.
+  }
+
+  return next();
 };
 
 app.post(
@@ -125,7 +180,7 @@ app.get(
       },
       orderBy: { order: "asc" }
     });
-    return res.json({ phases });
+    return res.json({ phases: phases.map(normalizePhase) });
   })
 );
 
@@ -133,7 +188,7 @@ app.get(
   "/api/phases",
   asyncHandler(async (_req, res) => {
     const phases = await prisma.phase.findMany({ orderBy: { order: "asc" } });
-    return res.json({ phases });
+    return res.json({ phases: phases.map(normalizePhase) });
   })
 );
 
@@ -154,7 +209,7 @@ app.get(
       return res.status(404).json(errorResponse("NOT_FOUND", "Phase not found"));
     }
 
-    return res.json({ phase });
+    return res.json({ phase: normalizePhase(phase) });
   })
 );
 
@@ -183,6 +238,7 @@ app.get(
 
 app.get(
   "/api/lessons/:lessonId",
+  optionalAuthMiddleware,
   asyncHandler(async (req, res) => {
     const lesson = await prisma.lesson.findUnique({
       where: { id: req.params.lessonId },
@@ -196,7 +252,20 @@ app.get(
       return res.status(404).json(errorResponse("NOT_FOUND", "Lesson not found"));
     }
 
-    return res.json({ lesson });
+    const userId = (req as express.Request & { userId?: string }).userId;
+    const progress = userId
+      ? await prisma.userLessonProgress.findUnique({
+          where: { userId_lessonId: { userId, lessonId: lesson.id } }
+        })
+      : null;
+
+    return res.json({
+      completed: progress?.completed ?? false,
+      lesson: {
+        ...lesson,
+        quizQuestions: lesson.quizQuestions.map(normalizeQuizQuestion)
+      }
+    });
   })
 );
 
@@ -204,7 +273,7 @@ app.get(
   "/api/projects",
   asyncHandler(async (_req, res) => {
     const projects = await prisma.project.findMany({ include: { phase: true } });
-    return res.json({ projects });
+    return res.json({ projects: projects.map(normalizeProject) });
   })
 );
 
@@ -218,7 +287,7 @@ app.get(
     if (!project) {
       return res.status(404).json(errorResponse("NOT_FOUND", "Project not found"));
     }
-    return res.json({ project });
+    return res.json({ project: normalizeProject(project) });
   })
 );
 
@@ -351,7 +420,16 @@ app.post(
       }
     });
 
-    return res.json({ attempt, score, total });
+    const completed = total > 0 && score === total;
+    if (completed) {
+      await prisma.userLessonProgress.upsert({
+        where: { userId_lessonId: { userId, lessonId } },
+        update: { completed: true, completedAt: new Date() },
+        create: { userId, lessonId, completed: true, completedAt: new Date() }
+      });
+    }
+
+    return res.json({ attempt, score, total, completed });
   })
 );
 
